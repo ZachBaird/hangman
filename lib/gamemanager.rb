@@ -1,14 +1,48 @@
 # frozen_string_literal: true
 
+require_relative 'savegame'
+
 # Manages the game
 class GameManager
   attr_accessor :correct_positions
 
-  def initialize(word)
-    @correct_positions = []
-    @guessed_letters = []
+  def initialize(word, positions = nil, letters = nil)
+    if positions.nil? && letters.nil?
+      @correct_positions = [] if positions.nil?
+      @guessed_letters = [] if letters.nil?
 
-    word.strip.split('').each { @correct_positions.push(false) }
+      word.strip.split('').each { @correct_positions.push(false) }
+    else
+      @correct_positions = positions.split('').map { |pos| pos == '1' }
+      @guessed_letters = letters.split('')
+    end
+  end
+
+  # Saves the game's current state
+  def save_game(word)
+    data_to_serialize = {}
+
+    # Add current word to hash
+    data_to_serialize['word'] = word
+
+    # Add the guessed_letters to hash as a string
+    data_to_serialize['guessed_letters'] = @guessed_letters.join
+
+    # Add the correct positions into an array as a '1' or '0'
+    correct_guesses = @correct_positions.map do |position|
+      if position
+        '1'
+      else
+        '0'
+      end
+    end
+
+    # Add the compiled correct data to the hash as a string
+    data_to_serialize['position_data'] = correct_guesses.join
+
+    # Initialize a SaveGame class and commit the data to a file
+    save = SaveGame.new
+    save.commit_save(data_to_serialize)
   end
 
   # Updates the screen with the word
@@ -45,6 +79,7 @@ class GameManager
 
     return 'QUIT' if input == 'qg'
     return 'WORD' if input == 'gw'
+    return 'SAVE' if input == 'sg'
 
     valid = valid_input?(input)
     if valid
@@ -53,7 +88,7 @@ class GameManager
         set_correct_position(word, input)
       else
         puts 'You\'re wrong!'
-        @guessed_letters.push(input)
+        @guessed_letters.push(input) unless @guessed_letters.include?(input)
       end
     else
       puts 'Invalid input'
